@@ -19,3 +19,23 @@ func (r *RestaurantRepository) Create(ctx context.Context, rest *restaurant.Rest
 	err := r.pool.QueryRow(ctx, query, rest.Name, rest.Address, rest.Phone).Scan(&rest.ID)
 	return err
 }
+func (r *RestaurantRepository) GetAll(ctx context.Context) ([]restaurant.Restaurant, error){
+	query := `SELECT id, name, address, phone FROM restaurants ORDER BY id`
+	rows, err := r.pool.Query(ctx, query)
+	if err != nil{
+		return nil, err
+	}
+	defer rows.Close()
+
+	var restaurants []restaurant.Restaurant
+	for rows.Next(){
+		var rest restaurant.Restaurant
+		if err := rows.Scan(&rest.ID, &rest.Name, &rest.Address, &rest.Phone); err != nil{
+			return nil, err
+		}
+		restaurants = append(restaurants, rest)
+	}
+	return restaurants, rows.Err()
+	
+
+}

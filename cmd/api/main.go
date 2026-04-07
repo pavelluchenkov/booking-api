@@ -38,9 +38,19 @@ func main() {
 
 	restaurantRepo := postgres.NewRestaurantRepository(pool)
 	createRestaurantUC := restaurant.NewCreateRestaurantUseCase(restaurantRepo)
-	restaurantHandler := handlers.NewRestaurantHandler(createRestaurantUC)
+	getAllRestaurantsUC := restaurant.NewGetAllRestaurantsUseCase(restaurantRepo)
 
-	http.HandleFunc("/restaurants", restaurantHandler.Create)
+	restaurantHandler := handlers.NewRestaurantHandler(createRestaurantUC, getAllRestaurantsUC)
+
+	http.HandleFunc("/restaurants", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			restaurantHandler.Create(w, r)
+		} else if r.Method == http.MethodGet {
+			restaurantHandler.GetAll(w, r)
+		} else {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
 	http.HandleFunc("/ping", pingHandler)
 	http.HandleFunc("/status", statusHandler)
 
