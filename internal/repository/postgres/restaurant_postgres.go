@@ -4,38 +4,55 @@ import (
 	"booking-api/internal/domain/restaurant"
 	"booking-api/internal/repository"
 	"context"
+	"errors"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type RestaurantRepository struct{
+type RestaurantRepository struct {
 	pool *pgxpool.Pool
 }
-func NewRestaurantRepository(pool *pgxpool.Pool) repository.RestaurantRepository{
+
+func NewRestaurantRepository(pool *pgxpool.Pool) repository.RestaurantRepository {
 	return &RestaurantRepository{pool: pool}
 }
-func (r *RestaurantRepository) Create(ctx context.Context, rest *restaurant.Restaurant) error{
+func (r *RestaurantRepository) Create(ctx context.Context, rest *restaurant.Restaurant) error {
 	query := `INSERT INTO restaurants (name, address, phone) VALUES ($1, $2, $3) RETURNING id`
 	err := r.pool.QueryRow(ctx, query, rest.Name, rest.Address, rest.Phone).Scan(&rest.ID)
 	return err
 }
-func (r *RestaurantRepository) GetAll(ctx context.Context) ([]restaurant.Restaurant, error){
+func (r *RestaurantRepository) GetAll(ctx context.Context) ([]restaurant.Restaurant, error) {
 	query := `SELECT id, name, address, phone FROM restaurants ORDER BY id`
 	rows, err := r.pool.Query(ctx, query)
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
 	var restaurants []restaurant.Restaurant
-	for rows.Next(){
+	for rows.Next() {
 		var rest restaurant.Restaurant
-		if err := rows.Scan(&rest.ID, &rest.Name, &rest.Address, &rest.Phone); err != nil{
+		if err := rows.Scan(&rest.ID, &rest.Name, &rest.Address, &rest.Phone); err != nil {
 			return nil, err
 		}
 		restaurants = append(restaurants, rest)
 	}
 	return restaurants, rows.Err()
-	
 
+}
+func (r *RestaurantRepository) GetByID(ctx context.Context, id int64) (*restaurant.Restaurant, error) {
+	var rest restaurant.Restaurant
+
+	query := `SELECT id, name, address, phone FROM restaurants WHERE id = $1`
+
+	row := r.pool.QueryRow(ctx, query, id)
+	err := row.Scan(&rest.ID, &rest.Name, &rest.Address, &rest.Phone)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.New("restaurant not found")
+		}
+		return nil, err
+	}
+	return &rest, nil
 }

@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -39,10 +40,16 @@ func main() {
 	restaurantRepo := postgres.NewRestaurantRepository(pool)
 	createRestaurantUC := restaurant.NewCreateRestaurantUseCase(restaurantRepo)
 	getAllRestaurantsUC := restaurant.NewGetAllRestaurantsUseCase(restaurantRepo)
+	getRestaurantsByID := restaurant.NewGetRestaurantByIDUseCase(restaurantRepo)
 
-	restaurantHandler := handlers.NewRestaurantHandler(createRestaurantUC, getAllRestaurantsUC)
+	restaurantHandler := handlers.NewRestaurantHandler(createRestaurantUC, getAllRestaurantsUC, getRestaurantsByID)
 
-	http.HandleFunc("/restaurants", func(w http.ResponseWriter, r *http.Request) {
+	router := mux.NewRouter()
+
+	router.HandleFunc("/ping", pingHandler).Methods("GET")
+	router.HandleFunc("/status", statusHandler).Methods("GET")
+
+	router.HandleFunc("/restaurants", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			restaurantHandler.Create(w, r)
 		} else if r.Method == http.MethodGet {
@@ -50,12 +57,12 @@ func main() {
 		} else {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
-	})
-	http.HandleFunc("/ping", pingHandler)
-	http.HandleFunc("/status", statusHandler)
+	}).Methods("GET", "POST")
+
+	router.HandleFunc("/restaurants/{id:[0-9]+}", restaurantHandler.GetRestaurantByID).Methods("GET")
 
 	log.Println("Server started on localhost 8080")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
+	if err := http.ListenAndServe(":8080", router); err != nil {
 		log.Fatal("Server failed:", err)
 	}
 
