@@ -4,6 +4,7 @@ import (
 	"booking-api/internal/repository/postgres"
 	"booking-api/internal/transport/http/handlers"
 	"booking-api/internal/usecase/restaurant"
+	"booking-api/internal/usecase/table"
 	"context"
 	"encoding/json"
 	"log"
@@ -44,7 +45,13 @@ func main() {
 	updateRestaurant := restaurant.NewUpdateRestaurant(restaurantRepo)
 	deleteRestaurant := restaurant.NewDeleteRestaurantUseCase(restaurantRepo)
 
+	tablesRepo := postgres.NewTableRepository(pool)
+	createTableUC := table.NewCreateTableUseCase(tablesRepo, restaurantRepo)
+	getTableByTableIDUC := table.NewGetTableByTableID(tablesRepo)
+	getTableByRestaurantIDUC := table.NewGetTableByRestaurantID(tablesRepo, restaurantRepo)
+
 	restaurantHandler := handlers.NewRestaurantHandler(createRestaurantUC, getAllRestaurantsUC, getRestaurantsByID, updateRestaurant, deleteRestaurant)
+	tablesHandler := handlers.NewTableHandler(createTableUC, getTableByTableIDUC, getTableByRestaurantIDUC)
 
 	router := mux.NewRouter()
 
@@ -64,6 +71,10 @@ func main() {
 	router.HandleFunc("/restaurants/{id:[0-9]+}", restaurantHandler.GetRestaurantByID).Methods("GET")
 	router.HandleFunc("/restaurants/{id:[0-9]+}", restaurantHandler.Update).Methods("PUT")
 	router.HandleFunc("/restaurants/{id:[0-9]+}", restaurantHandler.Delete).Methods("DELETE")
+
+	router.HandleFunc("/restaurants/{id:[0-9]+}/tables", tablesHandler.Create).Methods("POST")
+	router.HandleFunc("/restaurants/{id:[0-9]+}/tables", tablesHandler.GetByRestaurantID).Methods("GET")
+	router.HandleFunc("/tables/{id:[0-9]+}", tablesHandler.GetByID).Methods("GET")
 
 	log.Println("Server started on localhost 8080")
 	if err := http.ListenAndServe(":8080", router); err != nil {

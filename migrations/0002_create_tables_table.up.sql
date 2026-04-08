@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS tables(
+    id BIGSERIAL PRIMARY KEY,
+    restaurants_id BIGINT NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+    number INT NOT NULL, 
+    capacity INT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW() 
+);
