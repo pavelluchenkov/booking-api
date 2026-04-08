@@ -56,3 +56,19 @@ func (r *RestaurantRepository) GetByID(ctx context.Context, id int64) (*restaura
 	}
 	return &rest, nil
 }
+func (r *RestaurantRepository) Update(ctx context.Context, rest *restaurant.Restaurant) error{
+	query := `UPDATE restaurants SET name = $1, address = $2, phone = $3 WHERE id = $4`
+	_, err := r.pool.Exec(ctx, query, rest.Name, rest.Address, rest.Phone, rest.ID)
+	return err
+}
+func (r *RestaurantRepository) Delete(ctx context.Context, id int64) error{
+	query := `DELETE FROM restaurants WHERE id = $1`
+	result, err := r.pool.Exec(ctx, query, id)
+	if err != nil{
+		return err
+	}
+	if result.RowsAffected() == 0{
+		return errors.New("restaurant not found")
+	}
+	return nil
+}

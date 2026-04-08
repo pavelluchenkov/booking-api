@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+
 	"github.com/gorilla/mux"
 )
 
@@ -19,13 +20,23 @@ type RestaurantHandler struct {
 	createUC            *restaurant.CreateRestaurantUseCase
 	getAllUC            *restaurant.GetAllRestaurantsUseCase
 	getRestaurantByIDUC *restaurant.GetRestaurantByIDUseCase
+	updateUC            *restaurant.UpdateRestaurantUseCase
+	deleteUC            *restaurant.DeleteRestaurantUseCase
 }
 
-func NewRestaurantHandler(createUC *restaurant.CreateRestaurantUseCase, getAllUC *restaurant.GetAllRestaurantsUseCase, getRestaurantByIDUC *restaurant.GetRestaurantByIDUseCase) *RestaurantHandler {
+func NewRestaurantHandler(
+	createUC *restaurant.CreateRestaurantUseCase,
+	getAllUC *restaurant.GetAllRestaurantsUseCase,
+	getRestaurantByIDUC *restaurant.GetRestaurantByIDUseCase,
+	updateUC *restaurant.UpdateRestaurantUseCase,
+	deleteUC *restaurant.DeleteRestaurantUseCase,
+) *RestaurantHandler {
 	return &RestaurantHandler{
 		createUC:            createUC,
 		getAllUC:            getAllUC,
 		getRestaurantByIDUC: getRestaurantByIDUC,
+		updateUC:            updateUC,
+		deleteUC:            deleteUC,
 	}
 }
 
@@ -60,17 +71,61 @@ func (h *RestaurantHandler) GetRestaurantByID(w http.ResponseWriter, r *http.Req
 		return
 	}
 	restaurant, err := h.getRestaurantByIDUC.Execute(r.Context(), id)
-	 if err != nil {
-        if err.Error() == "restaurant not found" {
-            writeError(w, http.StatusNotFound, err)
-            return
-        }
-        writeError(w, http.StatusInternalServerError, err)
-        return
-    }
+	if err != nil {
+		if err.Error() == "restaurant not found" {
+			writeError(w, http.StatusNotFound, err)
+			return
+		}
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
 
 	writeJSON(w, http.StatusOK, restaurant)
 
+}
+func (h *RestaurantHandler) Update(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	idStr := vars["id"]
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, errors.New("invalid id format"))
+		return
+	}
+	var req CreateRestaurantRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	rest, err := h.updateUC.Execute(r.Context(), id, req.Name, req.Address, req.Phone)
+	if err != nil {
+		if err.Error() == "restaurant not found" {
+			writeError(w, http.StatusNotFound, err)
+			return
+		}
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, rest)
+}
+func (h *RestaurantHandler) Delete(w http.ResponseWriter, r *http.Request){
+	vars := mux.Vars(r)
+	idStr := vars["id"]
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil{
+		writeError(w, http.StatusBadRequest, errors.New("invalif format"))
+		return
+	}
+	err = h.deleteUC.Execute(r.Context(), id)
+	if err != nil {
+		if err.Error() == "restaurant not found" {
+			writeError(w, http.StatusNotFound, err)
+			return
+		}
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, "DELETED")
 }
 func writeError(w http.ResponseWriter, status int, err error) {
 	w.Header().Set("Content-Type", "application/json")

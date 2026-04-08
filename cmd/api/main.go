@@ -41,8 +41,10 @@ func main() {
 	createRestaurantUC := restaurant.NewCreateRestaurantUseCase(restaurantRepo)
 	getAllRestaurantsUC := restaurant.NewGetAllRestaurantsUseCase(restaurantRepo)
 	getRestaurantsByID := restaurant.NewGetRestaurantByIDUseCase(restaurantRepo)
+	updateRestaurant := restaurant.NewUpdateRestaurant(restaurantRepo)
+	deleteRestaurant := restaurant.NewDeleteRestaurantUseCase(restaurantRepo)
 
-	restaurantHandler := handlers.NewRestaurantHandler(createRestaurantUC, getAllRestaurantsUC, getRestaurantsByID)
+	restaurantHandler := handlers.NewRestaurantHandler(createRestaurantUC, getAllRestaurantsUC, getRestaurantsByID, updateRestaurant, deleteRestaurant)
 
 	router := mux.NewRouter()
 
@@ -60,6 +62,8 @@ func main() {
 	}).Methods("GET", "POST")
 
 	router.HandleFunc("/restaurants/{id:[0-9]+}", restaurantHandler.GetRestaurantByID).Methods("GET")
+	router.HandleFunc("/restaurants/{id:[0-9]+}", restaurantHandler.Update).Methods("PUT")
+	router.HandleFunc("/restaurants/{id:[0-9]+}", restaurantHandler.Delete).Methods("DELETE")
 
 	log.Println("Server started on localhost 8080")
 	if err := http.ListenAndServe(":8080", router); err != nil {
